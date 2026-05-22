@@ -1,0 +1,7 @@
+numpy
+vtk
+torch
+torch-geometric
+scikit-learn
+SimpleITK
+pandas

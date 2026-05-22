@@ -1,2 +1,10 @@
-# Preprocess_3DPhotograms
-This project was created to preprocess all 3D photograms available in the database and transform .vtp files into .pt files.
+# Cranial Graph Preprocessing
+
+This repository converts 3D cranial meshes (.vtp/.vtk) into graph representations for deep learning.
+
+## 🚀 Usage
+
+```bash
+python scripts/run_preprocessing.py \
+    --input_path /path/to/raw/data \
+    --output_path /path/to/output
