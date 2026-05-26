@@ -15,7 +15,7 @@
             // ✅ argumentos
             "args": [
                 "--config",
-                "configs/test.yaml"
+                "configs/3DMD_cleaned_folder.yaml"
             ],
 
             // opcional: variables de entorno

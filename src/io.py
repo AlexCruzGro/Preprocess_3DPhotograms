@@ -1,51 +1,44 @@
 import vtk
 from pathlib import Path
-from os import path
+from os import path, walk
 import pandas as pd
 
 def FindFilesToProcess(inputFolder, verbose=False):
-    # validar carpeta
     if not path.exists(inputFolder):
         raise ValueError(f'Input folder {inputFolder} not found! Please check.')
 
-    # buscar todos los .vtp recursivamente
-    all_files = list(Path(inputFolder).rglob("*.vtp"))
-
-    if len(all_files) == 0:
-        raise ValueError(f'No .vtp files found in {inputFolder}')
-
-    # agrupar por carpeta
+    target_files = {"landmarks.vtp", "photo.vtp", "photo-raw.vtp"}
     folder_dict = {}
+    total_files = 0
 
-    for file_path in all_files:
-        folder = file_path.parent
+    for folder, _, filenames in walk(inputFolder):
+        matches = target_files.intersection(filenames)
+        if matches:
+            folder_dict[Path(folder)] = matches
+            total_files += len(matches)
 
-        if folder not in folder_dict:
-            folder_dict[folder] = []
+    if total_files == 0:
+        raise ValueError(f'No target .vtp files found in {inputFolder}')
 
-        folder_dict[folder].append(file_path.name)
-
-    # construir tabla
     rows = []
 
     for folder, files in folder_dict.items():
-        files_set = set(files)
         if folder.parts[-1] != inputFolder:
             parentsName=folder.parts[-2]
             row = {
                 "parent_names": parentsName,
                 "folder_names": folder.parts[-1],
-                "has_landmarks": int("landmarks.vtp" in files_set),
-                "has_photo": int("photo.vtp" in files_set),
-                "has_photo_raw": int("photo-raw.vtp" in files_set),
+                "has_landmarks": int("landmarks.vtp" in files),
+                "has_photo": int("photo.vtp" in files),
+                "has_photo_raw": int("photo-raw.vtp" in files),
                 "folder_path": str(folder),
             }
         else:
             row = {
                 "parent_names": folder.parts[-1],  # nombres de carpetas padre
-                "has_landmarks": int("landmarks.vtp" in files_set),
-                "has_photo": int("photo.vtp" in files_set),
-                "has_photo_raw": int("photo-raw.vtp" in files_set),
+                "has_landmarks": int("landmarks.vtp" in files),
+                "has_photo": int("photo.vtp" in files),
+                "has_photo_raw": int("photo-raw.vtp" in files),
                 "folder_path": str(folder),
             }
 
@@ -53,7 +46,7 @@ def FindFilesToProcess(inputFolder, verbose=False):
 
     df = pd.DataFrame(rows)
     if verbose:
-        print(f'Found {len(all_files)} .vtp files')
+        print(f'Found {total_files} .vtp files')
         print(f'Total folders detected: {len(df)}')
         print(f'Total landmarks files detected: {df['has_landmarks'].sum()}')
         print(f'Total photo files detected: {df['has_photo'].sum()}')

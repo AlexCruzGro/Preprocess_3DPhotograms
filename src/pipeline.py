@@ -59,14 +59,15 @@ def preprocess_pipeline(input_file, output_file, config, photo=False, landmark=F
             torch.save(graph, os.path.join(output_file, 'graph.pt'))
         if config["save_features"]:
             # Save graph-related features to disk for later reuse.
-            torch.save(graph.x, os.path.join(output_file, "photo_normals.pt"))
-            torch.save(graph.pos, os.path.join(output_file, "photo_coord.pt"))
+            torch.save(graph.x, os.path.join(output_file, "normals.pt"))
+            torch.save(graph.pos, os.path.join(output_file, "coordinates.pt"))
+            torch.save(graph.edge_weight, os.path.join(output_file,"edge_weights.pt"))
 
             # Optional fields (only saved if they exist on the graph)
             if hasattr(graph, "texture"):
-                torch.save(graph.texture, os.path.join(output_file, "photo_texture.pt"))
+                torch.save(graph.texture, os.path.join(output_file, "textures.pt"))
             if hasattr(graph, "landmarks"):
-                torch.save(graph.landmarks, os.path.join(output_file, "photo_landmarks.pt"))
+                torch.save(graph.landmarks, os.path.join(output_file, "landmarks.pt"))
 
         
         # Always write outputs for the meshes we processed
@@ -96,14 +97,15 @@ def preprocess_pipeline(input_file, output_file, config, photo=False, landmark=F
                 torch.save(graph_raw, os.path.join(output_raw_file, 'graph.pt'))
             if config["save_features"]:
                 # Save graph-related features to disk for later reuse.
-                torch.save(graph_raw.x, os.path.join(output_raw_file, "photo_normals.pt"))
-                torch.save(graph_raw.pos, os.path.join(output_raw_file, "photo_coord.pt"))
+                torch.save(graph_raw.x, os.path.join(output_raw_file, "normals.pt"))
+                torch.save(graph_raw.pos, os.path.join(output_raw_file, "coordinates.pt"))
+                torch.save(graph_raw.edge_weight, os.path.join(output_raw_file,"edge_weights.pt"))
 
                 # Optional fields (only saved if they exist on the graph)
                 if hasattr(graph_raw, "texture"):
-                    torch.save(graph_raw.texture, os.path.join(output_raw_file, "photo_texture.pt"))
-                if hasattr(graph_raw, "landmarks"):
-                    torch.save(graph_raw.landmarks, os.path.join(output_raw_file, "photo_landmarks.pt"))
+                    torch.save(graph_raw.texture, os.path.join(output_raw_file, "textures.pt"))
+                if hasattr(graph_raw, "landmarks") and (landmark and not photo):
+                    torch.save(graph_raw.landmarks, os.path.join(output_raw_file, "landmarks.pt"))
             if config["save_vtp_files"]:
                 WritePolyData(photo_raw_mesh, os.path.join(output_raw_file, 'photo-raw.vtp'))
 
