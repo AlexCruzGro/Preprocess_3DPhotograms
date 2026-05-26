@@ -3,7 +3,6 @@ from vtk.util.numpy_support import vtk_to_numpy
 from torch_geometric.data import Data
 import torch_geometric as tog
 import numpy as np
-from mesh_utils import get_edges_of_mesh
 import vtk
 
 class MyData(Data):
@@ -50,7 +49,7 @@ def convert_to_coo(edge_table):
         out_edges += val
     return np.array([in_edges, out_edges])
 
-def convert_to_graph(image_vtp, name=None, use_texture=False):
+def convert_to_graph(image_vtp, name=None, use_texture=False, landmarks=[]):
     '''
         Function to convert a 3D photograph (VTP mesh) and its landmarks to a graph
         According to https://pytorch-geometric.readthedocs.io/en/latest/modules/data.html#torch_geometric.data.Data
@@ -60,30 +59,29 @@ def convert_to_graph(image_vtp, name=None, use_texture=False):
         edge_indices = COO format of graph 
     '''
     pos = vtk_to_numpy(image_vtp.GetPoints().GetData())
-    # pos = pos - np.mean(pos,axis=0)
-    # transform = sitk.Similarity3DTransform()
-    # transform.SetMatrix(R)
-    # transform.SetTranslation(trns)
-    # pos2 = np.matmul((pos-np.mean(pos,axis=0)),np.array(R).reshape(3,3).transpose(1,0))+trns+np.mean(pos,axis=0)
-    # pos2 = np.matmul((pos),np.array(R).reshape(3,3).transpose(1,0))+trns
-    x = vtk_to_numpy(image_vtp.GetPointData().GetArray('Normals'))
+    normals = vtk_to_numpy(image_vtp.GetPointData().GetArray('Normals'))
     edge_table = get_edges_of_mesh(image_vtp)
     edge_indices = convert_to_coo(edge_table)
     # node_weights = calc_node_weights(torch.tensor(pos))
-    x = torch.tensor(x)
+    normals = torch.tensor(normals)
+    
+    if landmarks:
+        pointsLand = torch.tensor(vtk_to_numpy(landmarks.GetPoints().GetData()))
+    else:
+        pointsLand = torch.empty(0)
     
     edge_indices, _ = tog.utils.remove_self_loops(edge_indices)
     row, col = edge_indices
     edge_weights = np.linalg.norm(pos[row] - pos[col], axis=1)
     
-    data = MyData(x = x, pos = torch.tensor(pos), edge_index = torch.tensor(edge_indices, dtype = torch.long), num_nodes = len(pos), edge_weight =torch.tensor(edge_weights), imageID=name)
+    data = MyData(x = normals, pos = torch.tensor(pos), edge_index = torch.tensor(edge_indices, dtype = torch.long), num_nodes = len(pos), edge_weight =torch.tensor(edge_weights), imageID=name, landmarks=pointsLand)
 
     if use_texture:
             #normalize the texture
             texture = vtk_to_numpy(image_vtp.GetPointData().GetArray('Texture'))
             texture[np.isnan(texture)]=0
-            data.x  = torch.cat((torch.tensor(x), torch.tensor(texture)/255), dim = 1)
+            data.texture = torch.tensor(texture)/255
+            #torch.cat((torch.tensor(x), torch.tensor(texture)/255), dim = 1)
     #now adjust the batch
     data.batch = torch.zeros(data.pos.shape[0], dtype = torch.int64)
-    # dataR.batch = torch.zeros(data.pos.shape[0], dtype = torch.int64)
     return data

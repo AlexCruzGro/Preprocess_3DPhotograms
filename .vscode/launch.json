@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run pipeline (module)",
+            "type": "python",
+            "request": "launch",
+
+            // 🔥 CLAVE: ejecuta como módulo
+            "module": "scripts.run",
+
+            // ✅ asegura que estás en la raíz del proyecto
+            "cwd": "${workspaceFolder}",
+
+            // ✅ argumentos
+            "args": [
+                "--config",
+                "configs/test.yaml"
+            ],
+
+            // opcional: variables de entorno
+            "console": "integratedTerminal"
+        }
+    ]
+}

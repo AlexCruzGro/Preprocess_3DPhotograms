@@ -10,31 +10,17 @@ from vtk.util import numpy_support
 from vtk.util.numpy_support import vtk_to_numpy
 import SimpleITK as sitk
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
 from os import path, getlogin, listdir
 import os
-from sklearn.cluster import KMeans
-from sklearn.neighbors import KDTree
-import open3d as o3d
-from datetime import datetime
 from sklearn.model_selection import train_test_split
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-import copy
-from torch_geometric.data import Data, Database
-from torch_geometric.transforms import SamplePoints, KNNGraph
 import torch_geometric.transforms as T
 import torch_geometric as tog
-from DataLoaders import LoadedDataset, MyData
+from DataLoaders import MyData
 from pathlib import Path
-import pandas as pd
 import sys
 import pdb
 sys.path.append('D:\OneDrive - The University of Colorado Denver\R01_Grant\CranioRegistration\cranialphenotyping-LowerLandmarkTemplate\python')
-from cpToolkit.cranioToolkit import CTImage
 
 def FindFilesToProcess(inputFolder, filename):
     #make sure our input folder exists

@@ -1,0 +1,23 @@
+# I/O
+input_dir: F:\OneDrive - The University of Colorado Denver\Databases_MIP\3D_Photogrammetry_Databases\3DMD_Processed_Image_Database_Cleft
+output_dir: C:\Users\alejandrocruz\Documents\3DMD_Processed_Image_Database_Cleft
+save_df: true
+
+# preprocessing
+clean: true
+normals: true
+
+# mesh options
+fix_normals: True
+tolerance: 0.0
+registration: True
+save_vtp_files: False
+save_graphs: True
+save_features: True
+process_raw_photo: True
+
+# graph
+use_texture: false
+
+# debug
+verbose: true

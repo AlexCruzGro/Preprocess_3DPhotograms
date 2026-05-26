@@ -2,10 +2,11 @@ import vtk
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 import torch
-import sitk
+import SimpleITK as sitk
 import pdb
 from collections import defaultdict
 from itertools import combinations
+from src.graph_utils import MyData
 
 def ComputeNormals(inputMesh, flip: int=0, split=False):
     filter = vtk.vtkPolyDataNormals()
@@ -465,7 +466,9 @@ def MeshReg(source, target):
     icp.SetTarget(target)
     icp.GetLandmarkTransform().SetModeToRigidBody()
     icp.SetMaximumNumberOfIterations(100)
-    icp.StartByMatchingCentroidsOn()
+    # icp.SetMaximumNumberOfLandmarks(5000)
+    icp.SetMeanDistanceModeToRMS()
+    # icp.StartByMatchingCentroidsOn()
     icp.Modified()
     icp.Update()
     return icp
