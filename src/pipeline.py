@@ -112,7 +112,8 @@ def preprocess_pipeline(input_file, output_file, config, photo=False, landmark=F
                 # Save as VTP so downstream steps can reload consistently
                 WritePolyData(landmarks, os.path.join(output_file, 'landmarks.vtp'))
     else:
-        print(f'The photo {Path(input_file).name} has been processed......')
+        if photo:
+            print(f'The photo {Path(input_file).name} has been processed......')
             
             
     if process_raw:
@@ -141,5 +142,6 @@ def preprocess_pipeline(input_file, output_file, config, photo=False, landmark=F
         if config["save_vtp_files"]:
             WritePolyData(photo_raw_mesh, os.path.join(output_raw_file, 'photo-raw.vtp'))
     else:
-        print(f'The photo-raw {Path(input_file).name} has been processed......')
+        if photoraw:
+            print(f'The photo-raw {Path(input_file).name} has been processed......')
     # return graph

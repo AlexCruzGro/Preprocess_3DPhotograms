@@ -1,5 +1,5 @@
 # I/O
-input_dir: F:\OneDrive - The University of Colorado Denver\Databases_MIP\3D_Photogrammetry_Databases\3DMD_Processed_Image_Database_Cleft
+input_dir: C:\Users\alejandrocruz\Box\DatasetsFromCU\3D_Photogrametry_Database\3DMD_Processed_Image_Database_Cleft
 output_dir: C:\Users\alejandrocruz\Documents\3DMD_Processed_Image_Database_Cleft
 save_df: true
 
