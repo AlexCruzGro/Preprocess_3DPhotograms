@@ -8,8 +8,16 @@ from collections import defaultdict
 from itertools import combinations
 from src.graph_utils import MyData
 
+
+def _detach_polydata(polydata):
+    output = vtk.vtkPolyData()
+    output.DeepCopy(polydata)
+    return output
+
+
 def ComputeNormals(inputMesh, flip: int=0, split=False):
     filter = vtk.vtkPolyDataNormals()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(inputMesh)
     filter.ComputeCellNormalsOn()
     filter.ComputePointNormalsOn()
@@ -19,19 +27,18 @@ def ComputeNormals(inputMesh, flip: int=0, split=False):
     filter.SetFlipNormals(flip)
     filter.SetSplitting(split)
     filter.Update()
-    outputMesh = filter.GetOutput()
-    return outputMesh
+    return _detach_polydata(filter.GetOutput())
 
 def CleanPolyData(inputMesh, tol=0):
     filter = vtk.vtkCleanPolyData()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(inputMesh)
     filter.PointMergingOn()
     filter.ConvertLinesToPointsOff()
     filter.ConvertPolysToLinesOff()
     filter.SetTolerance(tol)
     filter.Update()
-    outputMesh = filter.GetOutput()
-    return outputMesh
+    return _detach_polydata(filter.GetOutput())
 
 def GetPointNormal(mesh, point):
     closestPoint = GetClosestVertex(mesh, point)
@@ -44,58 +51,65 @@ def FixDegerateRegion(inputRegion):
     ids.InsertNextId(0)
 
     extractFilter = vtk.vtkExtractCells()
+    extractFilter.ReleaseDataFlagOn()
     extractFilter.SetInputData(inputRegion)
     extractFilter.SetCellList(ids)
     extractFilter.Update()
     unstructuredGrid = extractFilter.GetOutput()
 
     geometryFilter = vtk.vtkGeometryFilter()
+    geometryFilter.ReleaseDataFlagOn()
     geometryFilter.SetInputData(unstructuredGrid)
     geometryFilter.Update()
-    outputRegion = geometryFilter.GetOutput()
-    return outputRegion
+    return _detach_polydata(geometryFilter.GetOutput())
 
 def GetMeshRegions(inputMesh):
-    filter = vtk.vtkPolyDataConnectivityFilter()
-    filter.SetInputData(inputMesh)
-    filter.SetExtractionModeToSpecifiedRegions()
-
     regions = []
     regionId = 0
 
     while True:
+        filter = vtk.vtkPolyDataConnectivityFilter()
+        filter.ReleaseDataFlagOn()
+        filter.SetInputData(inputMesh)
+        filter.SetExtractionModeToSpecifiedRegions()
         filter.AddSpecifiedRegion(regionId)
         filter.Update()
 
-        region = vtk.vtkPolyData()
-
-        region.DeepCopy(filter.GetOutput())
+        region = _detach_polydata(filter.GetOutput())
         # Make sure we got something
         if region.GetNumberOfCells() <= 0:
             break
 
         region = CleanPolyData(region)
         regions.append(region)
-        filter.DeleteSpecifiedRegion(regionId)
         regionId += 1
 
     # sort regions by number of cells
     regions.sort(key=lambda x: x.GetNumberOfCells(), reverse=True)
+    if not regions:
+        return _detach_polydata(inputMesh), []
+
     mainRegion = regions[0]
     smallRegions = regions[1:]
+    for poly in regions:
+        # Break possible pipeline connections if any
+        if hasattr(poly, "SetSourceConnection"):
+            poly.SetSourceConnection(None)
+    regions.clear()
+    del regions
 
     return mainRegion, smallRegions
 
 def GetBoundaryEdges(inputMesh):
     feature_edges = vtk.vtkFeatureEdges()
+    feature_edges.ReleaseDataFlagOn()
     feature_edges.SetInputData(inputMesh)
     feature_edges.BoundaryEdgesOn()
     feature_edges.FeatureEdgesOff()
     feature_edges.NonManifoldEdgesOff()
     feature_edges.ManifoldEdgesOff()
     feature_edges.Update()
-    boundaryEdges = feature_edges.GetOutput()
-    return boundaryEdges
+    return _detach_polydata(feature_edges.GetOutput())
 
 def GetBoundaryPoint(inputMesh):
     boundaryEdges = GetBoundaryEdges(inputMesh)
@@ -170,84 +184,103 @@ def CorrectFlippedRegions(inputMesh):
         smallRegionsCorrected.append(smallRegion)
 
     appendFilter = vtk.vtkAppendPolyData()
+    appendFilter.ReleaseDataFlagOn()
     appendFilter.AddInputData(mainRegion)
     for region in smallRegionsCorrected:
         appendFilter.AddInputData(region)
     appendFilter.Update()
-    outputMesh = appendFilter.GetOutput()
-    outputMesh = CleanPolyData(outputMesh)
-
-    return outputMesh
+    for poly in smallRegionsCorrected:
+        # Break possible pipeline connections if any
+        if hasattr(poly, "SetSourceConnection"):
+            poly.SetSourceConnection(None)
+    smallRegionsCorrected.clear()
+    for poly in smallRegions:
+        # Break possible pipeline connections if any
+        if hasattr(poly, "SetSourceConnection"):
+            poly.SetSourceConnection(None)
+    smallRegions.clear()
+    del smallRegionsCorrected, mainRegion, smallRegions
+    return CleanPolyData(_detach_polydata(appendFilter.GetOutput()))
 def closeMesh (mesh):
 
     # We eliminate duplicates, because they may be marked as boundaries incorrectly
     filter = vtk.vtkCleanPolyData()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(mesh)
     filter.Update()
-    mesh = filter.GetOutput()
+    mesh = _detach_polydata(filter.GetOutput())
     
     # We make sure that there are only triangle cells in the mesh
     filter = vtk.vtkTriangleFilter()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(mesh)
     filter.PassLinesOff()
     filter.PassVertsOff()
     filter.Update()
-    mesh = filter.GetOutput()
+    mesh = _detach_polydata(filter.GetOutput())
     
     # Get edges
     filter = vtk.vtkFeatureEdges()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(mesh)
     filter.ExtractAllEdgeTypesOff()
     filter.BoundaryEdgesOn()
     filter.Update()
-    exteriorEdges = filter.GetOutput()
+    exteriorEdges = _detach_polydata(filter.GetOutput())
     
     # Triagulate edges
     filter = vtk.vtkDelaunay2D()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(exteriorEdges)
     filter.SetProjectionPlaneMode(2) # VTK_BEST_FITTING_PLANE
     filter.Update()
-    triangulatedEdges = filter.GetOutput()
+    triangulatedEdges = _detach_polydata(filter.GetOutput())
     
     # Append meshes
     filter = vtk.vtkAppendPolyData()
+    filter.ReleaseDataFlagOn()
     filter.AddInputData(mesh)
     filter.AddInputData(triangulatedEdges)
     filter.Update()
-    closedMesh = filter.GetOutput()
+    closedMesh = _detach_polydata(filter.GetOutput())
     
     # Fill any small holes that may remain
     filter = vtk.vtkFillHolesFilter()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(closedMesh)
     filter.SetHoleSize(1e6)
     filter.Update()
-    closedMesh = filter.GetOutput()
+    closedMesh = _detach_polydata(filter.GetOutput())
     
     # Clean mesh
     filter = vtk.vtkCleanPolyData()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(closedMesh)
     filter.Update()
-    closedMesh = filter.GetOutput()
+    closedMesh = _detach_polydata(filter.GetOutput())
     
     # We make sure that there are only triangle cells in the mesh
     filter = vtk.vtkTriangleFilter()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(closedMesh)
     filter.PassLinesOff()
     filter.PassVertsOff()
     filter.Update()
-    closedMesh = filter.GetOutput()
+    closedMesh = _detach_polydata(filter.GetOutput())
 
     smoothFilter = vtk.vtkWindowedSincPolyDataFilter()
+    smoothFilter.ReleaseDataFlagOn()
     smoothFilter.SetInputData(closedMesh)
     smoothFilter.SetNumberOfIterations(50)
     # smoothFilter.SetRelaxationFactor(0.01)
     smoothFilter.FeatureEdgeSmoothingOn()
     smoothFilter.BoundarySmoothingOn()
     smoothFilter.Update()
-    outputSurface = smoothFilter.GetOutput()
+    outputSurface = _detach_polydata(smoothFilter.GetOutput())
 
     # Update normals
     filter = vtk.vtkPolyDataNormals()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(outputSurface)
     filter.ComputeCellNormalsOn()
     filter.ComputePointNormalsOn()
@@ -255,9 +288,7 @@ def closeMesh (mesh):
     filter.AutoOrientNormalsOn()
     filter.ConsistencyOn()
     filter.Update()
-    closedMesh = filter.GetOutput()
-    
-    return closedMesh
+    return _detach_polydata(filter.GetOutput())
 
 
 # 3. Recuperar datos de VTK
@@ -269,9 +300,10 @@ def from_vtk(polydata):
 
 def CellToPointData(mesh):
     ptc = vtk.vtkCellDataToPointData()
+    ptc.ReleaseDataFlagOn()
     ptc.SetInputData(mesh)
     ptc.Update()
-    return ptc.GetOutput()
+    return _detach_polydata(ptc.GetOutput())
 
 def FindClosestPoint(data, point):
     locator = vtk.vtkPointLocator()
@@ -326,14 +358,16 @@ def DownsampleMesh(mesh, target_reduction = 0.1, angle=30, use_texture = True):
     mesh = CellToPointData(mesh)
 
     filter = vtk.vtkDecimatePro()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(mesh)
     filter.SetTargetReduction(1-target_reduction)
     filter.SetSplitAngle(angle)
     filter.Update()
-    decimated_mesh = filter.GetOutput()
+    decimated_mesh = _detach_polydata(filter.GetOutput())
 
     # Calculating normals
     filter = vtk.vtkPolyDataNormals()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(decimated_mesh)
     filter.ComputeCellNormalsOn()
     filter.ComputePointNormalsOn()
@@ -343,9 +377,7 @@ def DownsampleMesh(mesh, target_reduction = 0.1, angle=30, use_texture = True):
     filter.ConsistencyOn()
     filter.SplittingOff()
     filter.Update()
-    decimated_mesh = filter.GetOutput()
-
-    return decimated_mesh
+    return _detach_polydata(filter.GetOutput())
 
 def sitkToVtkImage(sitkImage):
 
@@ -447,17 +479,17 @@ def CreateMeshFromBinaryImage(binaryImage, insidePixelValue=1):
     vtkImage.GetPointData().SetScalars(dataArray)
 
     filter = vtk.vtkMarchingCubes()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(vtkImage)
     filter.SetValue(0, insidePixelValue)
     filter.Update()
-    mesh = filter.GetOutput()
+    mesh = _detach_polydata(filter.GetOutput())
 
     filter = vtk.vtkGeometryFilter()
+    filter.ReleaseDataFlagOn()
     filter.SetInputData(mesh)
     filter.Update()
-    mesh = filter.GetOutput()
-
-    return mesh
+    return _detach_polydata(filter.GetOutput())
 
 def MeshReg(source, target):
     # ICP for alignment
@@ -475,10 +507,11 @@ def MeshReg(source, target):
 
 def AppliedMeshTrans(Mesh, transform):
     transform_filter = vtk.vtkTransformPolyDataFilter()
+    transform_filter.ReleaseDataFlagOn()
     transform_filter.SetInputData(Mesh)
     transform_filter.SetTransform(transform)
     transform_filter.Update()
-    return transform_filter.GetOutput()
+    return _detach_polydata(transform_filter.GetOutput())
 
 def GetLandmarkNames(landmarks):
     arr = landmarks.GetPointData().GetAbstractArray('LandmarkName')

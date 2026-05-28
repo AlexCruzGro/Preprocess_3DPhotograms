@@ -61,9 +61,12 @@ def ReadPolyData(filename):
         reader = vtk.vtkPolyDataReader()
     else:
         reader = vtk.vtkXMLPolyDataReader()
+    reader.ReleaseDataFlagOn()
     reader.SetFileName(filename)
     reader.Update()
-    return reader.GetOutput()
+    output = vtk.vtkPolyData()
+    output.DeepCopy(reader.GetOutput())
+    return output
 
 def WritePolyData(data, filename):
     if filename.endswith('.vtk'):
@@ -75,4 +78,5 @@ def WritePolyData(data, filename):
     writer.SetFileName(filename)
     writer.SetInputData(data)
     writer.Update()
+    writer.SetInputData(None)
     return
