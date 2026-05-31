@@ -49,7 +49,7 @@ def convert_to_coo(edge_table):
         out_edges += val
     return np.array([in_edges, out_edges])
 
-def convert_to_graph(image_vtp, name=None, use_texture=False, landmarks=[]):
+def convert_to_graph(image_vtp, name=None, use_texture=False, landmarks=None):
     '''
         Function to convert a 3D photograph (VTP mesh) and its landmarks to a graph
         According to https://pytorch-geometric.readthedocs.io/en/latest/modules/data.html#torch_geometric.data.Data
@@ -65,7 +65,7 @@ def convert_to_graph(image_vtp, name=None, use_texture=False, landmarks=[]):
     # node_weights = calc_node_weights(torch.tensor(pos))
     normals = torch.tensor(normals)
     
-    if landmarks:
+    if landmarks is not None:
         pointsLand = torch.tensor(vtk_to_numpy(landmarks.GetPoints().GetData()))
     else:
         pointsLand = torch.empty(0)
